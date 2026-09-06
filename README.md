@@ -1,38 +1,38 @@
 ```python
-class CafeteriaOrderSystem:
+class MovieBookingSystem:
     def __init__(self):
         self.data = {}
 
-    def add_order(self, employee_id, name, meal_type, quantity):
-        if employee_id in self.data:
-            raise ValueError("Order already exists")
+    def create_booking(self, booking_id, customer_name, movie_name, tickets):
+        if booking_id in self.data:
+            raise ValueError("Booking already exists")
 
-        self.data[employee_id] = {
-            "name": name,
-            "meal_type": meal_type,
-            "quantity": quantity,
-            "status": "Confirmed"
+        self.data[booking_id] = {
+            "customer_name": customer_name,
+            "movie_name": movie_name,
+            "tickets": tickets,
+            "status": "Booked"
         }
 
         return self.data
 
-    def update_quantity(self, employee_id, new_quantity):
-        if employee_id not in self.data:
-            raise KeyError("Order not found")
+    def update_tickets(self, booking_id, new_ticket_count):
+        if booking_id not in self.data:
+            raise KeyError("Booking not found")
 
-        self.data[employee_id]["quantity"] = new_quantity
+        self.data[booking_id]["tickets"] = new_ticket_count
 
         return self.data
 
-    def get_order_details(self, employee_id):
-        if employee_id not in self.data:
-            raise KeyError("Order not found")
+    def get_booking_details(self, booking_id):
+        if booking_id not in self.data:
+            raise KeyError("Booking not found")
 
-        return self.data[employee_id]
+        return self.data[booking_id]
 
-    def get_bulk_orders(self, minimum_quantity):
+    def get_group_bookings(self, minimum_tickets):
         return [
-            eid for eid, info in self.data.items()
-            if info["quantity"] >= minimum_quantity
+            bid for bid, info in self.data.items()
+            if info["tickets"] >= minimum_tickets
         ]
 ```
