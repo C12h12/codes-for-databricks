@@ -13,7 +13,6 @@ class CouponBalanceTracker:
     def redeem_points(self, customer_id: str, points: int) -> dict:
         if customer_id not in self.coupons or self.coupons[customer_id] < points:
             raise ValueError("Insufficient coupon points")
-
         self.coupons[customer_id] -= points
         return self.coupons
 
