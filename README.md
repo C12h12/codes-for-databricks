@@ -1,4 +1,8 @@
+
+
 class ClinicQueueSystem:
+
+
     def __init__(self):
         self.queue_data = {}
 
