@@ -1,38 +1,41 @@
-```python
-class MovieBookingSystem:
+class CouponBalanceTracker:
+
     def __init__(self):
-        self.data = {}
+        self.coupons = {}
 
-    def create_booking(self, booking_id, customer_name, movie_name, tickets):
-        if booking_id in self.data:
-            raise ValueError("Booking already exists")
+    def add_coupon_points(self, customer_id: str, points: int) -> dict:
+        if customer_id in self.coupons:
+            self.coupons[customer_id] += points
+        else:
+            self.coupons[customer_id] = points
+        return self.coupons
 
-        self.data[booking_id] = {
-            "customer_name": customer_name,
-            "movie_name": movie_name,
-            "tickets": tickets,
-            "status": "Booked"
-        }
+    def redeem_points(self, customer_id: str, points: int) -> dict:
+        if customer_id not in self.coupons or self.coupons[customer_id] < points:
+            raise ValueError("Insufficient coupon points")
 
-        return self.data
+        self.coupons[customer_id] -= points
+        return self.coupons
 
-    def update_tickets(self, booking_id, new_ticket_count):
-        if booking_id not in self.data:
-            raise KeyError("Booking not found")
+    def transfer_balance(self, old_customer_id: str, new_customer_id: str) -> dict:
+        if old_customer_id not in self.coupons:
+            return self.coupons
 
-        self.data[booking_id]["tickets"] = new_ticket_count
+        old_balance = self.coupons[old_customer_id]
 
-        return self.data
+        if new_customer_id in self.coupons:
+            self.coupons[new_customer_id] += old_balance
+        else:
+            self.coupons[new_customer_id] = old_balance
 
-    def get_booking_details(self, booking_id):
-        if booking_id not in self.data:
-            raise KeyError("Booking not found")
+        del self.coupons[old_customer_id]
+        return self.coupons
 
-        return self.data[booking_id]
+    def active_customers(self) -> list:
+        active = []
 
-    def get_group_bookings(self, minimum_tickets):
-        return [
-            bid for bid, info in self.data.items()
-            if info["tickets"] >= minimum_tickets
-        ]
-```
+        for customer_id in self.coupons:
+            if self.coupons[customer_id] > 0:
+                active.append(customer_id)
+
+        return active
