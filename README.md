@@ -1,40 +1,36 @@
-class CouponBalanceTracker:
-
+class ClinicQueueSystem:
     def __init__(self):
-        self.coupons = {}
+        self.queue_data = {}
 
-    def add_coupon_points(self, customer_id: str, points: int) -> dict:
-        if customer_id in self.coupons:
-            self.coupons[customer_id] += points
-        else:
-            self.coupons[customer_id] = points
-        return self.coupons
+    def add_department(self, department: str, waiting_count: int) -> dict:
+        self.queue_data[department] = waiting_count
+        return self.queue_data
 
-    def redeem_points(self, customer_id: str, points: int) -> dict:
-        if customer_id not in self.coupons or self.coupons[customer_id] < points:
-            raise ValueError("Insufficient coupon points")
-        self.coupons[customer_id] -= points
-        return self.coupons
+    def update_waiting_count(self, department: str, new_count: int) -> dict:
+        if department not in self.queue_data:
+            raise KeyError("Department not found")
 
-    def transfer_balance(self, old_customer_id: str, new_customer_id: str) -> dict:
-        if old_customer_id not in self.coupons:
-            return self.coupons
+        self.queue_data[department] = new_count
+        return self.queue_data
 
-        old_balance = self.coupons[old_customer_id]
+    def crowded_departments(self, threshold: int) -> dict:
+        result = {}
 
-        if new_customer_id in self.coupons:
-            self.coupons[new_customer_id] += old_balance
-        else:
-            self.coupons[new_customer_id] = old_balance
+        for department, count in self.queue_data.items():
+            if count > threshold:
+                result[department] = count
 
-        del self.coupons[old_customer_id]
-        return self.coupons
+        return result
 
-    def active_customers(self) -> list:
-        active = []
+    def assign_queue_actions(self) -> dict:
+        actions = {}
 
-        for customer_id in self.coupons:
-            if self.coupons[customer_id] > 0:
-                active.append(customer_id)
+        for department, count in self.queue_data.items():
+            if count > 60:
+                actions[department] = "Open Extra Counter"
+            elif count >= 25:
+                actions[department] = "Normal Queue"
+            else:
+                actions[department] = "Fast Queue"
 
-        return active
+        return actions
