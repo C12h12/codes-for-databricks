@@ -1,40 +1,38 @@
-
-
-
-
-class GymWorkoutSystem:
+```python
+class MobileDataUsageSystem:
     def __init__(self):
         self.data = {}
 
-    def add_member(self, member_id, name, workout_type, workout_minutes):
-        if member_id in self.data:
-            raise ValueError("Member already exists")
+    def add_customer(self, customer_id, name, plan_name, data_used):
+        if customer_id in self.data:
+            raise ValueError("Customer already exists")
         
-        self.data[member_id] = {
+        self.data[customer_id] = {
             "name": name,
-            "workout_type": workout_type,
-            "workout_minutes": workout_minutes,
+            "plan_name": plan_name,
+            "data_used": data_used,
             "status": "Active"
         }
         
         return self.data
 
-    def update_workout_minutes(self, member_id, new_minutes):
-        if member_id not in self.data:
-            raise KeyError("Member not found")
+    def update_data_usage(self, customer_id, new_usage):
+        if customer_id not in self.data:
+            raise KeyError("Customer not found")
         
-        self.data[member_id]["workout_minutes"] = new_minutes
+        self.data[customer_id]["data_used"] = new_usage
         
         return self.data
 
-    def get_member_details(self, member_id):
-        if member_id not in self.data:
-            raise KeyError("Member not found")
+    def get_customer_details(self, customer_id):
+        if customer_id not in self.data:
+            raise KeyError("Customer not found")
         
-        return self.data[member_id]
+        return self.data[customer_id]
 
-    def get_active_members(self, minimum_minutes):
+    def get_high_data_users(self, usage_threshold):
         return [
-            mid for mid, info in self.data.items()
-            if info["workout_minutes"] >= minimum_minutes
+            cid for cid, info in self.data.items()
+            if info["data_used"] >= usage_threshold
         ]
+```
