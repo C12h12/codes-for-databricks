@@ -1,38 +1,38 @@
 ```python
-class MobileDataUsageSystem:
+class ParcelTrackingSystem:
     def __init__(self):
         self.data = {}
 
-    def add_customer(self, customer_id, name, plan_name, data_used):
-        if customer_id in self.data:
-            raise ValueError("Customer already exists")
+    def add_parcel(self, tracking_id, customer_name, destination, weight):
+        if tracking_id in self.data:
+            raise ValueError("Parcel already exists")
         
-        self.data[customer_id] = {
-            "name": name,
-            "plan_name": plan_name,
-            "data_used": data_used,
-            "status": "Active"
+        self.data[tracking_id] = {
+            "customer_name": customer_name,
+            "destination": destination,
+            "weight": weight,
+            "status": "In Transit"
         }
         
         return self.data
 
-    def update_data_usage(self, customer_id, new_usage):
-        if customer_id not in self.data:
-            raise KeyError("Customer not found")
+    def update_weight(self, tracking_id, new_weight):
+        if tracking_id not in self.data:
+            raise KeyError("Parcel not found")
         
-        self.data[customer_id]["data_used"] = new_usage
+        self.data[tracking_id]["weight"] = new_weight
         
         return self.data
 
-    def get_customer_details(self, customer_id):
-        if customer_id not in self.data:
-            raise KeyError("Customer not found")
+    def get_parcel_details(self, tracking_id):
+        if tracking_id not in self.data:
+            raise KeyError("Parcel not found")
         
-        return self.data[customer_id]
+        return self.data[tracking_id]
 
-    def get_high_data_users(self, usage_threshold):
+    def get_heavy_parcels(self, minimum_weight):
         return [
-            cid for cid, info in self.data.items()
-            if info["data_used"] >= usage_threshold
+            tid for tid, info in self.data.items()
+            if info["weight"] >= minimum_weight
         ]
 ```
