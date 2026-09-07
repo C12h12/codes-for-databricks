@@ -1,31 +1,81 @@
+class ParkingLotSystem:
 
-
-class EmployeeSalaryAnalyzer:
-    
     def __init__(self):
-        self.salary_data = {}
+        self.vehicles = {}
 
-    def parse_records(self, records):
-        for record in records.strip().split("\n"):
-            name, salary = record.split(",")
-            self.salary_data[name] = float(salary)
-        return self.salary_data
+    def add_vehicle(self, vehicle_no: str, owner: str, slot: str) -> dict:
+        if vehicle_no in self.vehicles:
+            raise ValueError("Vehicle already exists")
 
-    def total_salary(self):
-        total = 0.0
-        for salary in self.salary_data.values():
-            total += salary
-        return total
+        self.vehicles[vehicle_no] = {
+            "owner": owner,
+            "slot": slot,
+            "status": "Parked"
+        }
 
-    def apply_raise(self, percentage):
-        for name in self.salary_data:
-            self.salary_data[name] += self.salary_data[name] * percentage / 100
-        return self.salary_data
+        return self.vehicles
 
-    def top_earners(self, n):
-        sorted_data = sorted(
-            self.salary_data.items(),
-            key=lambda item: item[1],
-            reverse=True
-        )
-        return dict(sorted_data[:n])
+    def update_slot(self, vehicle_no: str, new_slot: str) -> dict:
+        if vehicle_no not in self.vehicles:
+            raise KeyError("Vehicle not found")
+
+        self.vehicles[vehicle_no]["slot"] = new_slot
+
+        return self.vehicles
+
+    def get_vehicle_details(self, vehicle_no: str) -> dict:
+        if vehicle_no not in self.vehicles:
+            raise KeyError("Vehicle not found")
+
+        return self.vehicles[vehicle_no]
+
+    def vehicles_by_zone(self, zone_prefix: str) -> list:
+        result = []
+
+        for vehicle_no in self.vehicles:
+            if self.vehicles[vehicle_no]["slot"].startswith(zone_prefix):
+                result.append(vehicle_no)
+
+        return result
+        
+        
+ class CafeteriaOrderSystem:
+
+    def __init__(self):
+        self.orders = {}
+
+    def add_order(self, employee_id, name, meal_type, quantity):
+        if employee_id in self.orders:
+            raise ValueError("Order already exists")
+
+        self.orders[employee_id] = {
+            "name": name,
+            "meal_type": meal_type,
+            "quantity": quantity,
+            "status": "Confirmed"
+        }
+
+        return self.orders
+
+    def update_quantity(self, employee_id, new_quantity):
+        if employee_id not in self.orders:
+            raise KeyError("Order not found")
+
+        self.orders[employee_id]["quantity"] = new_quantity
+
+        return self.orders
+
+    def get_order_details(self, employee_id):
+        if employee_id not in self.orders:
+            raise KeyError("Order not found")
+
+        return self.orders[employee_id]
+
+    def get_bulk_orders(self, minimum_quantity):
+        result = []
+
+        for employee_id in self.orders:
+            if self.orders[employee_id]["quantity"] >= minimum_quantity:
+                result.append(employee_id)
+
+        return result
