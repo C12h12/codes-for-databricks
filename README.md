@@ -1,81 +1,101 @@
-class ParkingLotSystem:
+from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql.functions import (
+    col,
+    when,
+    sum as spark_sum,
+    to_date
+)
 
-    def __init__(self):
-        self.vehicles = {}
 
-    def add_vehicle(self, vehicle_no: str, owner: str, slot: str) -> dict:
-        if vehicle_no in self.vehicles:
-            raise ValueError("Vehicle already exists")
+# 1. Load Booking Data
+def load_bookings_data(spark: SparkSession, path: str) -> DataFrame:
+    df = (
+        spark.read
+        .option("header", True)
+        .option("inferSchema", True)
+        .csv(path)
+    )
 
-        self.vehicles[vehicle_no] = {
-            "owner": owner,
-            "slot": slot,
-            "status": "Parked"
-        }
+    df = df.withColumn(
+        "show_date",
+        to_date(col("show_date"))
+    )
 
-        return self.vehicles
+    return df
 
-    def update_slot(self, vehicle_no: str, new_slot: str) -> dict:
-        if vehicle_no not in self.vehicles:
-            raise KeyError("Vehicle not found")
 
-        self.vehicles[vehicle_no]["slot"] = new_slot
+# 2. Load Movie Reference Data
+def load_movie_info(spark: SparkSession, path: str) -> DataFrame:
+    df = (
+        spark.read
+        .option("header", True)
+        .option("inferSchema", True)
+        .csv(path)
+    )
 
-        return self.vehicles
+    return df
 
-    def get_vehicle_details(self, vehicle_no: str) -> dict:
-        if vehicle_no not in self.vehicles:
-            raise KeyError("Vehicle not found")
 
-        return self.vehicles[vehicle_no]
+# 3. Filter Valid Bookings
+def filter_valid_bookings(df: DataFrame) -> DataFrame:
+    return df.filter(
+        (col("seats_booked") >= 0) &
+        (col("show_duration_min") >= 0)
+    )
 
-    def vehicles_by_zone(self, zone_prefix: str) -> list:
-        result = []
 
-        for vehicle_no in self.vehicles:
-            if self.vehicles[vehicle_no]["slot"].startswith(zone_prefix):
-                result.append(vehicle_no)
+# 4. Add Overbooking Breach Flag
+def with_overbooking_flag(df: DataFrame) -> DataFrame:
+    return df.withColumn(
+        "overbooked",
+        when(
+            col("seats_booked") > col("total_seats"),
+            1
+        ).otherwise(0)
+    )
 
-        return result
-        
-        
- class CafeteriaOrderSystem:
 
-    def __init__(self):
-        self.orders = {}
+# 5. Join Movie Metadata
+def join_movie_info(
+    bookings_df: DataFrame,
+    info_df: DataFrame
+) -> DataFrame:
 
-    def add_order(self, employee_id, name, meal_type, quantity):
-        if employee_id in self.orders:
-            raise ValueError("Order already exists")
+    return bookings_df.join(
+        info_df,
+        on="movie_id",
+        how="left"
+    )
 
-        self.orders[employee_id] = {
-            "name": name,
-            "meal_type": meal_type,
-            "quantity": quantity,
-            "status": "Confirmed"
-        }
 
-        return self.orders
+# 6. Movie Occupancy Efficiency
+def movie_occupancy_efficiency(df: DataFrame) -> str:
 
-    def update_quantity(self, employee_id, new_quantity):
-        if employee_id not in self.orders:
-            raise KeyError("Order not found")
+    grouped_df = (
+        df.groupBy(
+            "movie_id",
+            "total_seats"
+        )
+        .agg(
+            spark_sum("seats_booked").alias("total_booked")
+        )
+    )
 
-        self.orders[employee_id]["quantity"] = new_quantity
+    efficiency_df = grouped_df.withColumn(
+        "efficiency",
+        when(
+            col("total_seats") == 0,
+            0.0
+        ).otherwise(
+            col("total_booked") / col("total_seats")
+        )
+    )
 
-        return self.orders
+    result = (
+        efficiency_df
+        .orderBy(col("efficiency").desc())
+        .select("movie_id")
+        .first()
+    )
 
-    def get_order_details(self, employee_id):
-        if employee_id not in self.orders:
-            raise KeyError("Order not found")
-
-        return self.orders[employee_id]
-
-    def get_bulk_orders(self, minimum_quantity):
-        result = []
-
-        for employee_id in self.orders:
-            if self.orders[employee_id]["quantity"] >= minimum_quantity:
-                result.append(employee_id)
-
-        return result
+    return str(result["movie_id"])
