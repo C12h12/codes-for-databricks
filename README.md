@@ -1,101 +1,101 @@
 from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql.functions import (
-    col,
-    when,
-    sum as spark_sum,
-    to_date
-)
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
 
 
-# 1. Load Booking Data
-def load_bookings_data(spark: SparkSession, path: str) -> DataFrame:
-    df = (
-        spark.read
-        .option("header", True)
-        .option("inferSchema", True)
-        .csv(path)
-    )
-
-    df = df.withColumn(
-        "show_date",
-        to_date(col("show_date"))
-    )
-
-    return df
+def define_claim_schema() -> StructType:
+    return StructType([
+        StructField('claim_id', StringType(), True),
+        StructField('policy_id', StringType(), True),
+        StructField('customer_id', StringType(), True),
+        StructField('claim_amount', DoubleType(), True),
+        StructField('claim_status', StringType(), True),
+        StructField('claim_date', StringType(), True)
+    ])
 
 
-# 2. Load Movie Reference Data
-def load_movie_info(spark: SparkSession, path: str) -> DataFrame:
-    df = (
-        spark.read
-        .option("header", True)
-        .option("inferSchema", True)
-        .csv(path)
-    )
-
-    return df
-
-
-# 3. Filter Valid Bookings
-def filter_valid_bookings(df: DataFrame) -> DataFrame:
-    return df.filter(
-        (col("seats_booked") >= 0) &
-        (col("show_duration_min") >= 0)
-    )
-
-
-# 4. Add Overbooking Breach Flag
-def with_overbooking_flag(df: DataFrame) -> DataFrame:
-    return df.withColumn(
-        "overbooked",
-        when(
-            col("seats_booked") > col("total_seats"),
-            1
-        ).otherwise(0)
-    )
-
-
-# 5. Join Movie Metadata
-def join_movie_info(
-    bookings_df: DataFrame,
-    info_df: DataFrame
+def load_claims_data(
+    spark: SparkSession,
+    path: str,
+    schema: StructType
 ) -> DataFrame:
+    result = spark.read.csv(
+        path,
+        header=True,
+        schema=schema
+    )
+    return result.withColumn('claim_date', to_date('claim_date'))
 
-    return bookings_df.join(
-        info_df,
-        on="movie_id",
-        how="left"
+
+def load_policy_data(
+    spark: SparkSession,
+    path: str
+) -> DataFrame:
+    policy_df = spark.read.csv(
+        path,
+        header=True,
+        inferSchema=True
+    )
+    return policy_df
+
+
+def join_claims_with_policies(
+    claims_df: DataFrame,
+    policies_df: DataFrame
+) -> DataFrame:
+    joined = claims_df.join(
+        policies_df,
+        on='policy_id',
+        how='inner'
+    )
+
+    return joined.select(
+        'claim_id',
+        'policy_id',
+        'customer_id',
+        'claim_amount',
+        'claim_status',
+        'claim_date',
+        'policy_type',
+        'region',
+        'annual_premium'
     )
 
 
-# 6. Movie Occupancy Efficiency
-def movie_occupancy_efficiency(df: DataFrame) -> str:
+def policy_type_with_highest_approved_claim_amount(
+    df: DataFrame
+) -> Tuple[str, float]:
 
-    grouped_df = (
-        df.groupBy(
-            "movie_id",
-            "total_seats"
-        )
-        .agg(
-            spark_sum("seats_booked").alias("total_booked")
-        )
+    result = df.filter(
+        col('claim_status') == 'Approved'
     )
 
-    efficiency_df = grouped_df.withColumn(
-        "efficiency",
-        when(
-            col("total_seats") == 0,
-            0.0
-        ).otherwise(
-            col("total_booked") / col("total_seats")
-        )
+    result = result.filter(
+        col('policy_type').isNotNull()
+        & (trim(col('policy_type')) != '')
+        & col('claim_amount').isNotNull()
     )
 
     result = (
-        efficiency_df
-        .orderBy(col("efficiency").desc())
-        .select("movie_id")
-        .first()
+        result
+        .groupBy(col('policy_type'))
+        .agg(
+            sum(col('claim_amount')).alias(
+                'total_approved_claim_amount'
+            )
+        )
+        .orderBy(
+            col('total_approved_claim_amount').desc(),
+            col('policy_type').asc()
+        )
+        .limit(1)
+        .collect()
     )
 
-    return str(result["movie_id"])
+    if result:
+        return (
+            str(result[0]['policy_type']),
+            float(result[0]['total_approved_claim_amount'])
+        )
+    else:
+        return ("", 0.0)
