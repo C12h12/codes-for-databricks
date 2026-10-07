@@ -1,0 +1,143 @@
+#Q211
+from pyspark.sql import SparkSession,DataFrame
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+
+def load_circulation_data(spark:SparkSession,path:str)->DataFrame:
+    df=spark.read.csv(path,header=True,inferSchema=True)
+    df=df.withColumn("borrow_date",to_date("borrow_date"))
+    df=df.withColumn("return_date",to_date("return_date"))
+    return df
+
+def with_late_days(df:DataFrame)->DataFrame:
+    df=df.withColumn("days",datediff(col("return_date"),col("borrow_date")))
+    return df
+
+def filter_valid_loans(df:DataFrame)->DataFrame:
+    df=df.filter(col("days") >=0)
+    return df
+
+def category_popularity(df:DataFrame)->DataFrame:
+    result=df.groupBy(col("category")).agg(
+        count("*").alias("borrows")
+    )
+    return result.select("category","borrows")
+
+def top_category(df:DataFrame)->Tuple[str,int]:
+    result=df.orderBy(col("borrows").desc(),col("category").asc()).first()
+    return (result[0],int(result[1]))
+
+
+
+#Q214
+from pyspark.sql import SparkSession,DataFrame
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+
+def load_irrigation_data(spark:SparkSession,path:str)->DataFrame:
+    df=spark.read.csv(path,header=True,inferSchema=True)
+    df=df.withColumn("irrigation_date",to_date("irrigation_date"))
+    return df
+
+def with_month(df:DataFrame)->DataFrame:
+    result=df.withColumn("month",to_date(date_trunc("month",col("irrigation_date"))))
+    return result
+
+def filter_valid(df:DataFrame)->DataFrame:
+    df=df.filter(col("liters_used")>=0)
+    return df
+
+def monthly_crop_water(df:DataFrame)->DataFrame:
+    df=df.groupBy("crop_type","month").agg(
+        sum("liters_used").alias("total_liters")
+    )
+    return df
+
+def top_crop_by_month(df:DataFrame)->str:
+    result=df.groupBy("crop_type").agg(
+        sum("total_liters").alias("total_liters")
+    ).orderBy(col("total_liters").desc()).first()
+
+    return str(result["crop_type"])
+
+
+#Q219
+from pyspark.sql import SparkSession,DataFrame
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+
+def load_rides_csv(spark:SparkSession,path:str)->DataFrame:
+    df=spark.read.csv(path,header=True,inferSchema=True)
+    return df
+
+def find_loyal_customers(df:DataFrame,n:int)->DataFrame:
+    result=df.groupBy("CustomerID").agg(
+        count("*").alias("customer_count")
+    )
+    result=result.filter(col("customer_count")>=n)
+    return result.select("CustomerID")
+
+def apply_discounts(df:DataFrame,loyal_customers:DataFrame)->DataFrame:
+    df1=loyal_customers.withColumn("is_loyal",lit(True))
+    result=df1.join(df,"CustomerID","left")
+    result=result.withColumn("discount",when(col("is_loyal")==True,0.10).otherwise(0.07))
+    return result
+
+
+def top_three_longest_trips(df:DataFrame)->DataFrame:
+    result=df.select("RideId","source","destination","distance").orderBy(col("distance").desc()).limit(3)
+    return result
+
+def get_top_earners(df:DataFrame)->DataFrame:
+    result=df.groupBy("DriverID").agg(
+        sum("earnings").alias("total_earnings")
+    ).limit(3)
+
+    return result
+
+
+
+#Q216
+from pyspark.sql import SparkSession,DataFrame
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+
+def load_inline_data(spark:SparkSession)->DataFrame:
+  data = [
+        ("O1001", "PartnerA", "2025-12-01 10:00:00", "2025-12-01 12:00:00", "Traffic"),
+        ("O1002", "PartnerA", "2025-12-01 09:00:00", "2025-12-01 10:30:00", "Traffic"),
+        ("O1003", "PartnerB", "2025-12-02 14:00:00", "2025-12-02 18:00:00", "Weather"),
+        ("O1004", "PartnerB", "2025-12-02 08:00:00", "2025-12-02 07:00:00", "Restaurant"),
+        ("O1005", "PartnerC", "2025-12-03 11:00:00", "2025-12-03 13:00:00", "Restaurant"),
+        ("O1006", "PartnerC", "2025-12-03 16:00:00", "2025-12-03 20:00:00", "Traffic"),
+    ]
+  columns=["order_id","partner","expected_delivery","actual_delivery","delay_reason"]
+  return spark.createDataFrame(data,columns)
+
+
+def compute_delay(df:DataFrame)->DataFrame:
+  duration=(unix_timestamp(col("actual_delivery"))- unix_timestamp(col("expected_delivery")))/3600
+  result=df.withColumn("delay_hours",when(duration >=0,duration).otherwise(0))
+
+  return result
+
+def get_delayed_orders(df:DataFrame,threshold:float)->DataFrame:
+  duration=(unix_timestamp(col("actual_delivery"))- unix_timestamp(col("expected_delivery")))/3600
+  result=df.withColumn("delay_hours",when(duration >=0,duration).otherwise(0))
+
+  result=result.filter(col("delay_hours") > threshold)
+  return result
+
+def most_delayed_partner(df:DataFrame)->DataFrame:
+  result=df.groupBy("partner").agg(
+    sum("delay_hours").alias("total_delay")
+  ).orderBy(col("total_delay").desc()).limit(1)
+  return result
+
+def most_common_delay_reason(df:DataFrame)->DataFrame:
+  result=df.groupBy("delay_reason").agg(
+    avg("delay_hours").alias("avg_delay")
+  ).orderBy(col("avg_delay").desc()).limit(1)
+
+  return result
+
